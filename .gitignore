@@ -9,3 +9,5 @@ venv/
 .pylintrc
 test.py
 dev.db
+app/scraper/save_page_selenium.py
+*.html
