@@ -14,7 +14,6 @@ from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.ui import WebDriverWait
 
 from .models import Advertisement
-from .database import session
 
 BASE_URL = "https://auto.ria.com/car/used/"
 
@@ -123,10 +122,4 @@ def get_all_advertisments() -> None:
 
 if __name__ == "__main__":
     advertisements = get_all_advertisments()
-    try:
-        session.add_all(advertisements)
-        session.commit()
-        print(f"Saved {len(advertisements)} advertisements to the database.")
-    except Exception as e:
-        session.rollback()
-        print(f"Failed to save advertisements: {e}")
+    
