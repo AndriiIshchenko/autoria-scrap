@@ -11,7 +11,7 @@ class Advertisement(Base):
     __tablename__ = "advertisements"
 
     id = Column(Integer, primary_key=True, index=True)
-    url = Column(String, unique=True, index=True)
+    url = Column(String)
     title = Column(String)
     price_usd = Column(Numeric(10, 2))
     odometer = Column(Integer)
