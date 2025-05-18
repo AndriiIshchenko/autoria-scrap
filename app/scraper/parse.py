@@ -20,7 +20,7 @@ BASE_URL = "https://auto.ria.com/car/used/"
 
 def get_element_text(soup, selector, default=None):
     element = soup.select_one(selector)
-    return element.text.strip() if element else default
+    return element.text.strip() if element and element.text.strip() != "" else default
 
 
 def get_phone_number(driver: webdriver):
@@ -62,7 +62,7 @@ def parse_advertisement_page(driver, advert_link: str) -> None:
 
     advert = Advertisement(
         url=advert_link,
-        title=soup.select_one("h1.head").get("title"),
+        title=get_element_text(soup, "h1.head", default="Unknown"),
         price_usd=float(
             get_element_text(soup, "div.price_value strong", default="0")
             .replace(" ", "")
@@ -94,7 +94,10 @@ def get_single_page_adverts_links(page_soup: BeautifulSoup) -> list[str]:
     return links_list
 
 
-def get_all_advertisments() -> None:
+def get_all_advertisments(saved_links: list[str] = None) -> list[Advertisement]:
+    if saved_links is None:
+        saved_links = []
+
     options = webdriver.ChromeOptions()
     # options.add_argument("--headless")  # Run in headless mode (optional)
     # options.add_argument("--no-sandbox")
@@ -104,22 +107,34 @@ def get_all_advertisments() -> None:
     )
 
     driver = webdriver.Chrome(options=options)
+    page_number = 1
+    advertisements_list = []
+    
+    while True:
+        driver.get(BASE_URL + f"?page={page_number}")
+        
+        page_source = driver.page_source
+        soup = BeautifulSoup(page_source, "html.parser")
+        
+        links = get_single_page_adverts_links(soup)
+        
+        for link in links[:5]:
+            if saved_links and link in saved_links:
+                print(f"Link already exists: {link}")
+                continue
+            advert = parse_advertisement_page(driver, link)
+            if advert:
+                print(advert.__dict__)
+                advertisements_list.append(advert)
 
-    driver.get(BASE_URL)
-    page_source = driver.page_source
-    soup = BeautifulSoup(page_source, "html.parser")
-
-    links = get_single_page_adverts_links(soup)
-    advertisements = []
-    for link in links[:5]:
-        advert = parse_advertisement_page(driver, link)
-        if advert:
-            advertisements.append(advert)
-
+        page_number += 1
+        next_page_link = soup.select_one("a.page-link.js-next")
+        if not next_page_link or page_number > 5:
+            break
+    
     driver.quit()
     
-    return advertisements
+    return advertisements_list
 
 if __name__ == "__main__":
     advertisements = get_all_advertisments()
-    
