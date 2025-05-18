@@ -25,7 +25,7 @@ def get_element_text(soup, selector, default=None):
 
 def get_phone_number(driver: webdriver):
     try:
-        show_phone_link = WebDriverWait(driver, 10).until(
+        show_phone_link = WebDriverWait(driver, 2).until(
             ec.presence_of_element_located((By.CSS_SELECTOR, "a.phone_show_link"))
         )
         driver.execute_script("arguments[0].scrollIntoView(true);", show_phone_link)
@@ -36,7 +36,7 @@ def get_phone_number(driver: webdriver):
         return None
 
     try:
-        phone_number_element = WebDriverWait(driver, 10).until(
+        phone_number_element = WebDriverWait(driver, 2).until(
             ec.presence_of_element_located(
                 (By.CLASS_NAME, "popup-successful-call-desk")
             )
@@ -77,7 +77,11 @@ def parse_advertisement_page(driver, advert_link: str) -> None:
         username=get_element_text(
             soup, "div.seller_info_name a.sellerPro", default="Unknown"
         ),
-        image_url=soup.select_one("img.outline.m-auto").get("src"),
+        image_url=(
+            soup.select_one("img.outline.m-auto").get("src")
+            if soup.select_one("img.outline.m-auto")
+            else None
+        ),
         images_count=int(
             get_element_text(soup, "span.dhide", default="0").replace("з ", "")
         ),
@@ -99,8 +103,8 @@ def get_all_advertisments(saved_links: list[str] = None) -> list[Advertisement]:
         saved_links = []
 
     options = webdriver.ChromeOptions()
-    # options.add_argument("--headless")  # Run in headless mode (optional)
-    # options.add_argument("--no-sandbox")
+    options.add_argument("--headless")  # Run in headless mode (optional)
+    options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument(
         "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
@@ -109,15 +113,15 @@ def get_all_advertisments(saved_links: list[str] = None) -> list[Advertisement]:
     driver = webdriver.Chrome(options=options)
     page_number = 1
     advertisements_list = []
-    
+
     while True:
         driver.get(BASE_URL + f"?page={page_number}")
-        
+
         page_source = driver.page_source
         soup = BeautifulSoup(page_source, "html.parser")
-        
+
         links = get_single_page_adverts_links(soup)
-        
+
         for link in links[:5]:
             if saved_links and link in saved_links:
                 print(f"Link already exists: {link}")
@@ -131,10 +135,17 @@ def get_all_advertisments(saved_links: list[str] = None) -> list[Advertisement]:
         next_page_link = soup.select_one("a.page-link.js-next")
         if not next_page_link or page_number > 5:
             break
-    
+
     driver.quit()
-    
+
     return advertisements_list
 
+
 if __name__ == "__main__":
+    start_time = time.time()  # Record the start time
     advertisements = get_all_advertisments()
+    end_time = time.time()  # Record the end time
+
+    execution_time = end_time - start_time  # Calculate the execution time
+    print(f"Total advertisements fetched: {len(advertisements)}")
+    print(f"Execution time: {execution_time:.2f} seconds")
