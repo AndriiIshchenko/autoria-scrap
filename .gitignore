@@ -11,3 +11,6 @@ test.py
 dev.db
 app/scraper/save_page_selenium.py
 *.html
+dumps/datetime_log.txt
+datetime_log.txt
+app/scraper/init_db_2.py
