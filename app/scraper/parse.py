@@ -1,6 +1,5 @@
 import time
 import select
-from tkinter import N
 import requests
 from bs4 import BeautifulSoup, Tag
 from selenium import webdriver
@@ -10,8 +9,10 @@ from selenium.common.exceptions import (
     NoSuchElementException,
 )
 from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 from .models import Advertisement
 
@@ -48,7 +49,7 @@ def get_phone_number(driver: webdriver):
         return None
 
     phone_number = phone_number.replace(" ", "").replace("(", "").replace(")", "")
-    return int("38" + phone_number)
+    return "+38" + phone_number
 
 
 def parse_advertisement_page(driver, advert_link: str) -> None:
@@ -67,6 +68,7 @@ def parse_advertisement_page(driver, advert_link: str) -> None:
             get_element_text(soup, "div.price_value strong", default="0")
             .replace(" ", "")
             .replace("$", "")
+            .replace("€", "")
         ),
         odometer=int(
             get_element_text(
@@ -106,11 +108,22 @@ def get_all_advertisments(saved_links: list[str] = None) -> list[Advertisement]:
     options.add_argument("--headless")  # Run in headless mode (optional)
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
     options.add_argument(
         "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
     )
-
-    driver = webdriver.Chrome(options=options)
+    print("Starting Chrome driver...")
+    # driver = webdriver.Chrome(options=options)
+    # service = Service("/usr/bin/chromedriver", service_args=["--verbose"])
+    # service.start_timeout = 300 
+    # driver = webdriver.Chrome(service=service, options=options)
+    driver = webdriver.Remote(
+        command_executor="http://selenium:4444/wd/hub",
+        options=options,
+        # desired_capabilities=DesiredCapabilities.CHROME,
+    )
+    print("Chrome driver started.")
+    print("Connected to Selenium Remote WebDriver.")  
     page_number = 1
     advertisements_list = []
 
@@ -122,7 +135,7 @@ def get_all_advertisments(saved_links: list[str] = None) -> list[Advertisement]:
 
         links = get_single_page_adverts_links(soup)
 
-        for link in links[:5]:
+        for link in links[:2]:
             if saved_links and link in saved_links:
                 print(f"Link already exists: {link}")
                 continue
@@ -133,7 +146,7 @@ def get_all_advertisments(saved_links: list[str] = None) -> list[Advertisement]:
 
         page_number += 1
         next_page_link = soup.select_one("a.page-link.js-next")
-        if not next_page_link or page_number > 5:
+        if not next_page_link or page_number > 2:
             break
 
     driver.quit()

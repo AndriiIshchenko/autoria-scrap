@@ -30,6 +30,14 @@ services:
     volumes:
       - ./:/app
 
+  selenium:
+    image: selenium/standalone-chrome:latest
+    container_name: selenium
+    shm_size: 2g  # Prevent crashes due to shared memory issues
+    ports:
+      - "4444:4444"  # Selenium WebDriver port
+      - "7900:7900"  # VNC viewer port (optional, for debugging)
+
   celery:
     build:
       context: .
@@ -41,10 +49,12 @@ services:
       - ./:/app
       - ./dumps:/app/dumps 
     command: celery -A app.scraper.tasks worker --loglevel=info
+    mem_limit: 8g
+    cpus: 2.0
     depends_on:
       - redis
       - postgres
-    
+      - selenium
 
   celery_beat:
     build:
