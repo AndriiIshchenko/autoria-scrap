@@ -16,7 +16,7 @@ class Advertisement(Base):
     price_usd = Column(Numeric(10, 2))
     odometer = Column(Integer)
     username = Column(String)
-    phone_number = Column(Integer)
+    phone_number = Column(String)
     image_url = Column(String)
     images_count = Column(Integer)
     car_number = Column(String)
