@@ -1,22 +1,34 @@
+import os
 import time
-import select
-import requests
-from bs4 import BeautifulSoup, Tag
+import logging
+from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.common.exceptions import (
-    ElementClickInterceptedException,
-    TimeoutException,
-    NoSuchElementException,
+    TimeoutException
 )
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 from .models import Advertisement
 
 BASE_URL = "https://auto.ria.com/car/used/"
+
+# LOG_DIR = "/app/logs"
+# os.makedirs(LOG_DIR, exist_ok=True)
+# output_file = os.path.join(LOG_DIR, "scraper.log")
+
+# Ensure the export directory exists
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(),  # Log to console
+        logging.FileHandler("/app/logs/scraper.log", mode="w"),  # Log to file
+    ],
+)
+logger = logging.getLogger(__name__)
 
 
 def get_element_text(soup, selector, default=None):
@@ -31,9 +43,9 @@ def get_phone_number(driver: webdriver):
         )
         driver.execute_script("arguments[0].scrollIntoView(true);", show_phone_link)
         show_phone_link.click()
-        print("Phone show link clicked successfully.")
+        logger.info("Phone show link clicked successfully.")
     except TimeoutException:
-        print("Phone show link not found within the timeout period.")
+        logger.warning("Phone show link not found within the timeout period.")
         return None
 
     try:
@@ -43,22 +55,21 @@ def get_phone_number(driver: webdriver):
             )
         )
         phone_number = phone_number_element.text
-
     except TimeoutException:
-        print("Phone number not found within the timeout period.")
+        logger.warning("Phone number not found within the timeout period.")
         return None
 
     phone_number = phone_number.replace(" ", "").replace("(", "").replace(")", "")
     return "+38" + phone_number
 
 
-def parse_advertisement_page(driver, advert_link: str) -> None:
+def parse_advertisement_page(driver, advert_link: str) -> Advertisement:
     try:
         driver.get(advert_link)
         page_source = driver.page_source
         soup = BeautifulSoup(page_source, "html.parser")
     except TimeoutException:
-        print("Failed to retrieve page.")
+        logger.error(f"Failed to retrieve page: {advert_link}")
         return None
 
     advert = Advertisement(
@@ -91,12 +102,14 @@ def parse_advertisement_page(driver, advert_link: str) -> None:
         car_vin=get_element_text(soup, "span.label-vin", default="Unknown"),
         phone_number=get_phone_number(driver),
     )
+    logger.info(f"Parsed advertisement: {advert.url}")
     return advert
 
 
 def get_single_page_adverts_links(page_soup: BeautifulSoup) -> list[str]:
     results = page_soup.select(".m-link-ticket")
     links_list = [link.get("href") for link in results if link.get("href")]
+    logger.info(f"Found {len(links_list)} advertisement links on the page.")
     return links_list
 
 
@@ -112,50 +125,47 @@ def get_all_advertisments(saved_links: list[str] = None) -> list[Advertisement]:
     options.add_argument(
         "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
     )
-    print("Starting Chrome driver...")
-    # driver = webdriver.Chrome(options=options)
-    # service = Service("/usr/bin/chromedriver", service_args=["--verbose"])
-    # service.start_timeout = 300 
-    # driver = webdriver.Chrome(service=service, options=options)
+    logger.info("Starting Chrome driver...")
     driver = webdriver.Remote(
         command_executor="http://selenium:4444/wd/hub",
         options=options,
-        # desired_capabilities=DesiredCapabilities.CHROME,
     )
-    print("Chrome driver started.")
-    print("Connected to Selenium Remote WebDriver.")  
+    logger.info("Chrome driver started.")
+    logger.info("Connected to Selenium Remote WebDriver.")
     page_number = 1
     advertisements_list = []
 
     while True:
         driver.get(BASE_URL + f"?page={page_number}")
+        logger.info(f"Fetching page {page_number}...")
 
         page_source = driver.page_source
         soup = BeautifulSoup(page_source, "html.parser")
 
         links = get_single_page_adverts_links(soup)
 
-        for link in links[:2]:
+        for link in links[:5]:
             if saved_links and link in saved_links:
-                print(f"Link already exists: {link}")
+                logger.info(f"Link already exists: {link}")
                 continue
             advert = parse_advertisement_page(driver, link)
             if advert:
-                print(advert.__dict__)
+                logger.info(f"Advertisement added: {advert.url}")
                 advertisements_list.append(advert)
 
         page_number += 1
         next_page_link = soup.select_one("a.page-link.js-next")
-        if not next_page_link or page_number > 2:
+        if not next_page_link or page_number > 3:
             break
 
     driver.quit()
-
+    logger.info("Chrome driver stopped.")
     return advertisements_list
 
 
 if __name__ == "__main__":
     start_time = time.time()  # Record the start time
+    print("Starting advertisement scraping...")
     advertisements = get_all_advertisments()
     end_time = time.time()  # Record the end time
 
