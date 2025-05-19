@@ -1,0 +1,8 @@
+POSTGRES_DB=autos
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=secret
+# DATABASE_URL=sqlite:///./dev.db
+DATABASE_URL=postgresql://postgres:secret@postgres:5432/autos
+CELERY_BROKER_URL=redis://redis:6379/0
+LOG_DIR=/app/logs
+EXPORT_DIR=/app/dump

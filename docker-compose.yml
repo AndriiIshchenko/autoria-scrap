@@ -31,9 +31,9 @@ services:
       - ./:/app
 
   selenium:
-    image: selenium/standalone-chrome:latest
+    image: selenium/standalone-chrome:99.0
     container_name: selenium
-    shm_size: 2g  # Prevent crashes due to shared memory issues
+    shm_size: 8g  # Prevent crashes due to shared memory issues
     ports:
       - "4444:4444"  # Selenium WebDriver port
       - "7900:7900"  # VNC viewer port (optional, for debugging)
@@ -47,7 +47,8 @@ services:
       - .env
     volumes:
       - ./:/app
-      - ./dumps:/app/dumps 
+      - ./dumps:/app/dumps
+      - ./logs:/app/logs
     command: celery -A app.scraper.tasks worker --loglevel=info
     mem_limit: 8g
     cpus: 2.0
@@ -61,6 +62,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: celery_beat
+    # volumes:
+    #   - ./:/app
+    #   - ./dumps:/app/dumps
+    #   - ./logs:/app/logs
     env_file:
       - .env
     command: celery -A app.scraper.tasks beat --loglevel=info

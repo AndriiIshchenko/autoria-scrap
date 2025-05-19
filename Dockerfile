@@ -26,6 +26,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 RUN mkdir -p /app/dumps && chown -R celeryuser:celerygroup /app
+RUN mkdir -p /app/logs && chown -R celeryuser:celerygroup /app
+RUN chmod -R 777 /app/logs
+RUN touch /app/logs/scraper.log && chmod 666 /app/logs/scraper.log && chown celeryuser:celerygroup /app/logs/scraper.log
 
 
 COPY . .
