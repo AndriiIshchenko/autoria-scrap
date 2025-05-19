@@ -1,7 +1,7 @@
 import os
 import time
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.exc import OperationalError
 from .models import Base
 
@@ -28,7 +28,7 @@ for attempt in range(MAX_RETRIES):
 else:
     raise Exception("Failed to connect to the database after multiple retries.")
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
 
 if __name__ == "__main__":
     print("Creating database tables...")
