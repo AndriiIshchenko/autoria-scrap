@@ -1,8 +1,9 @@
 import os
 import csv
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.inspection import inspect
 from .models import Advertisement
-from .init_db import engine
+from .init_db import SessionLocal
 
 # Directory for CSV exports
 EXPORT_DIR = "/app/dumps"
@@ -13,7 +14,6 @@ os.makedirs(EXPORT_DIR, exist_ok=True)
 
 def export_to_csv():
     # Create a session
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     session = SessionLocal()
 
     # Define the output CSV file
@@ -23,14 +23,17 @@ def export_to_csv():
         # Query all rows from the Advertisement table
         advertisements = session.query(Advertisement).all()
 
+        # Dynamically get column names from the Advertisement model
+        column_names = [column.key for column in inspect(Advertisement).columns]
+
         # Write rows to the CSV file
         with open(output_file, mode="w", newline="") as csvfile:
             writer = csv.writer(csvfile)
             # Write the header row
-            writer.writerow(["ID", "URL"])
+            writer.writerow(column_names)
             # Write data rows
             for ad in advertisements:
-                writer.writerow([ad.id, ad.url])
+                writer.writerow([getattr(ad, column) for column in column_names])
 
         print(f"Data exported successfully to {output_file}")
     except Exception as e:
